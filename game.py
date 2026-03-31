@@ -1,5 +1,5 @@
 import pygame
-from settings import ANCHO, ALTO, BLANCO, AZUL
+from settings import ANCHO, ALTO, BLANCO, AZUL, VERDE
 from jugador import Jugador
 from plataforma import Plataforma
 import sys
@@ -9,34 +9,61 @@ import random
 plataformas = pygame.sprite.Group()
 suelo = Plataforma(0, 550, 800, 50)
 plataformas.add(suelo)
-plataformas.add(Plataforma(200, 375, 200, 20))
+plataformas.add(Plataforma(200, 375, 200, 20, VERDE))
 
 class Juego:
     def __init__(self):
         pygame.init()
 
+        # fondo de pantalla:
         self.pantalla = pygame.display.set_mode((ANCHO, ALTO))
         pygame.display.set_caption("...")
         self.clock = pygame.time.Clock()
         self.fuente = pygame.font.Font(None, 36)
+        self.fuente_grande = pygame.font.Font(None, 72)
+        self.fondo = pygame.image.load("Assets/Fondo.webp")
+        self.fondo = pygame.transform.scale(self.fondo, (ANCHO, ALTO))
         self.jugador = Jugador()
-        self.puntaje = 0
+        self.puntaje = 200
+        self.estado = "jugando"
         self.enemigos = enemigos = pygame.sprite.Group()
         enemigo_1 = Enemigo()
         self.enemigos.add(enemigo_1)
         self.acelerador = 0
         self.doble = False
+        self.puntajes = []
+        self.puntaje_mas_alto = 0
 
     def ejecutar(self):
         while True:
+            self.clock.tick(60)
+            self.pantalla.blit(self.fondo, (0, 0))
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
 
             teclas = pygame.key.get_pressed()
-            puntos_ganados = self.jugador.update(self.enemigos)
-            self.puntaje += puntos_ganados
+            resultado = self.jugador.update(self.enemigos)
+            self.puntaje += resultado["puntos"]
+            if resultado["danio"]:
+                self.puntaje -= 200
+                self.jugador.rect.x = 200
+                self.jugador.rect.y = 100
+                self.jugador.velocidad_y = 0
+                print("Oh no. Perdiste 200 puntos")
+
+                if self.puntaje < 0:
+                    self.estado = "game_over"
+
+            self.puntajes.append(self.puntaje)
+
+            for nuevo_puntaje in self.puntajes:
+                if nuevo_puntaje > self.puntaje_mas_alto:
+                    self.puntaje_mas_alto = nuevo_puntaje
+            
+            if self.estado == "game_over":
+                self.mostrar_game_over()
 
             if teclas[pygame.K_LEFT] or teclas[pygame.K_a]: # si presiono </a...
                 self.jugador.velocidad_x = 6
@@ -71,8 +98,6 @@ class Juego:
                     self.jugador.velocidad_y = 0
                 break
 
-            self.pantalla.fill(BLANCO)
-
             self.pantalla.blit(self.jugador.image, self.jugador.rect)
             plataformas.draw(self.pantalla)
             self.enemigos.draw(self.pantalla)
@@ -93,7 +118,7 @@ class Juego:
                         enemigo.rect.x = self.juagdor.rect.x - 50
                     enemigo.rect.y = 400
 
-            if puntos_ganados > 0:
+            if resultado["puntos"] > 0:
                 if len(self.enemigos) >= 2:
                     self.acelerador += 0.1
                 else:
@@ -112,4 +137,21 @@ class Juego:
             self.pantalla.blit(texto_puntaje, (10, 10))
 
             pygame.display.flip()
-            self.clock.tick(60)
+
+    def mostrar_game_over(self):
+        self.pantalla.fill((0, 0, 0))
+
+        texto_game_over = self.fuente_grande.render("GAME OVER", True, (255, 255, 255))
+        texto_puntaje = self.fuente.render(f"Tu puntaje: {self.puntaje}", True, (255, 255, 255))
+        texto_puntaje_mas_alto = self.fuente_grande.render(f"Puntaje más alto: {self.puntaje_mas_alto}", True, (255, 255, 255))
+        posicion_game_over = texto_game_over.get_rect(center=(ANCHO // 2, ALTO // 2 - 50))
+        posicion_puntaje = texto_puntaje.get_rect(center=(ANCHO // 2, ALTO // 2 - 10))
+        posicion_puntaje_mas_alto = texto_puntaje_mas_alto.get_rect(center=(ANCHO // 2, ALTO // 2 - 175))
+        self.pantalla.blit(texto_game_over, posicion_game_over)
+        self.pantalla.blit(texto_puntaje, posicion_puntaje)
+        self.pantalla.blit(texto_puntaje_mas_alto, posicion_puntaje_mas_alto)
+        self.jugador.rect.x = -2000
+        for enemigo in self.enemigos:
+            enemigo.kill()
+        for plataforma in plataformas:
+            plataforma.kill()

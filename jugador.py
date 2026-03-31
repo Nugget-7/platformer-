@@ -17,12 +17,11 @@ class Jugador(pygame.sprite.Sprite):
     def update(self, enemigos):
         colisiones_enemigos = pygame.sprite.spritecollide(self, enemigos, False)
         puntos_ganados = 0
+        recibio_danio = False
         for enemigo in colisiones_enemigos:
             if self.velocidad_y > 0 and self.rect.bottom <= enemigo.rect.top + 20:
                 puntos_ganados += 100
                 enemigo.kill()
-            if self.rect.right <= enemigo.rect.left + 25 or self.rect.left >= enemigo.rect.right - 25:
-                puntos_ganados -= 200
-                self.rect.x = 200
-                self.rect.y = 100
-        return puntos_ganados
+            else:
+                recibio_danio = True
+        return { "puntos": puntos_ganados, "danio": recibio_danio }
